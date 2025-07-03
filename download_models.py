@@ -8,16 +8,17 @@ LOCAL_MODEL_DIR = os.getenv("MODEL_BASE_DIR", "/app/models") # Default to /app/m
 os.makedirs(LOCAL_MODEL_DIR, exist_ok=True)
 
 # Hugging Face model names to download
-# Use a model explicitly fine-tuned for sentiment analysis
-HF_SENTIMENT_MODEL_NAME = "distilbert-base-uncased-finetuned-sst2" # This is a common sentiment model
+# Using a different, robust sentiment analysis model
+HF_SENTIMENT_MODEL_NAME = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 HF_T5_NAME = "t5-small"
 
 # --- Download and Save Sentiment Model ---
 sentiment_model_path = os.path.join(LOCAL_MODEL_DIR, 'sentiment_model') # Give it a clearer name
 if not os.path.exists(sentiment_model_path):
     print(f"Downloading Sentiment Model '{HF_SENTIMENT_MODEL_NAME}' to {sentiment_model_path}...")
+    # Use AutoModelForSequenceClassification for sentiment task
     model = AutoModelForSequenceClassification.from_pretrained(HF_SENTIMENT_MODEL_NAME)
-    tokenizer = AutoTokenizer.from_pretrained(HF_SENTIMENT_MODEL_NAME) # Use the same name for tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(HF_SENTIMENT_MODEL_NAME)
     
     model.save_pretrained(sentiment_model_path)
     tokenizer.save_pretrained(sentiment_model_path)

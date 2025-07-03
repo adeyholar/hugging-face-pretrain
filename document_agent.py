@@ -40,6 +40,14 @@ class DocumentAgent:
             tokenizer=t5_tokenizer_path, 
         )
 
+        # Define the label mapping for the new sentiment model (cardiffnlp/twitter-roberta-base-sentiment-latest)
+        self.sentiment_label_map = {
+            'LABEL_0': 'NEGATIVE',
+            'LABEL_1': 'NEUTRAL',
+            'LABEL_2': 'POSITIVE'
+        }
+
+
     def analyze_document(self, text: str) -> dict:
         sentiment_results = self.classifier(text) 
         
@@ -48,6 +56,9 @@ class DocumentAgent:
         # ----------------------------------------------------
 
         sentiment = sentiment_results[0] # type: ignore [reportOptionalSubscript, reportIndexIssue, reportIncompatibleVariableType]
+        
+        # Map the generic label to a more descriptive one
+        mapped_label = self.sentiment_label_map.get(sentiment["label"], sentiment["label"]) # Default to original if not found
         
         summary_results = self.summarizer(text, max_length=150, min_length=40, do_sample=False)
         
@@ -58,7 +69,7 @@ class DocumentAgent:
         summary = summary_results[0]["summary_text"] # type: ignore [reportOptionalSubscript, reportIndexIssue, reportArgumentType, reportIncompatibleVariableType]
         
         return {
-            "sentiment": sentiment["label"], # type: ignore [reportArgumentType]
+            "sentiment": mapped_label, # Use the mapped label here
             "confidence": sentiment["score"], # type: ignore [reportArgumentType]
             "summary": summary
         }
