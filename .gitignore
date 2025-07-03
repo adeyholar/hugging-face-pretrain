@@ -1,0 +1,6 @@
+ai_huggingface-3.12/
+models/
+uploads/
+pycache/
+*.pyc
+.env"
