@@ -2,14 +2,15 @@
 
 from flask import Flask, request, render_template_string, send_file, jsonify
 from document_agent import DocumentAgent
-from email_service import EmailService # Import the new EmailService
+from email_service import EmailService 
 import os
-import secrets # For generating secure tokens/filenames
+import secrets 
 
 app = Flask(__name__)
 
 # Initialize your document analysis agent
-agent = DocumentAgent()
+# This will trigger model loading at app startup
+agent = DocumentAgent() 
 
 # Initialize your email service
 email_service = EmailService() 
@@ -18,7 +19,6 @@ email_service = EmailService()
 REPORTS_FOLDER = "analysis_reports"
 os.makedirs(REPORTS_FOLDER, exist_ok=True) # Ensure this directory exists
 
-# Basic HTML template for the upload form, now with an email input
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -29,7 +29,7 @@ HTML_TEMPLATE = """
         .container { max-width: 800px; margin: auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         h1 { color: #0056b3; text-align: center; margin-bottom: 30px; }
         form { display: flex; flex-direction: column; align-items: center; }
-        input[type="file"], input[type="email"], input[type="text"] { /* Added text input for subject */
+        input[type="file"], input[type="email"], input[type="text"] {
             border: 1px solid #a7d9f7;
             padding: 10px;
             border-radius: 5px;
@@ -37,7 +37,7 @@ HTML_TEMPLATE = """
             margin-bottom: 20px;
             background-color: #f0f8ff;
             color: #333;
-            box-sizing: border-box; /* Include padding in width */
+            box-sizing: border-box;
         }
         input[type="submit"] {
             background-color: #007bff;
@@ -92,27 +92,24 @@ HTML_TEMPLATE = """
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # Check if a file was submitted
         if "file" not in request.files:
             return render_template_string(HTML_TEMPLATE, message="No file part in the request.", message_type="error")
         
         file = request.files["file"]
         to_email = request.form.get("to_email")
-        email_subject = request.form.get("email_subject") or "Your Document Analysis Report" # Default subject
+        email_subject = request.form.get("email_subject") or "Your Document Analysis Report"
         
-        # Check if a file was selected
         if file.filename == "":
             return render_template_string(HTML_TEMPLATE, message="No file selected.", message_type="error")
         
         if file:
             try:
-                # Read the file content. Assumes UTF-8 for .txt files.
                 text = file.read().decode("utf-8")
-                
-                # Generate the report. This method returns the full path of the generated PDF.
                 pdf_report_path = agent.generate_report(text, output_dir=REPORTS_FOLDER)
                 
-                # Attempt to send email if an email address was provided
+                email_message = "Report generated successfully. "
+                message_type = "success"
+
                 if to_email:
                     email_body = (
                         "Dear client,\n\n"
@@ -128,35 +125,21 @@ def index():
                             body=email_body,
                             attachment_path=pdf_report_path
                         )
-                        email_message = f"Report generated and email sent to {to_email}."
+                        email_message += f"Email sent to {to_email}."
                         message_type = "success"
                     except ValueError as ve:
-                        email_message = f"Email configuration error: {ve}. Report generated, but email not sent."
+                        email_message += f"Email configuration error: {ve}. Email not sent."
                         message_type = "error"
                     except Exception as email_err:
-                        email_message = f"Failed to send email to {to_email}: {email_err}. Report generated."
+                        email_message += f"Failed to send email to {to_email}: {email_err}. "
                         message_type = "error"
                 else:
-                    email_message = "Report generated successfully. No email address provided for delivery."
-                    message_type = "info" # Use info for non-error messages
+                    email_message += "No email address provided for delivery."
+                    message_type = "info"
                 
-                # Send the generated PDF file back to the client for immediate download
+                print(f"Web interface outcome: {email_message}") # For server logs
+                
                 download_name = os.path.basename(pdf_report_path)
-                
-                # Flask's send_file can directly render a template after sending a file
-                # However, this pattern (returning send_file AND rendering template_string)
-                # is tricky. Flask's response can only be one or the other.
-                # A common pattern is to redirect, or provide links.
-                # For simplicity, we'll offer a direct download AND a message.
-                
-                # To show a message AND send a file, the message would typically be on a subsequent page.
-                # For this direct download pattern, the message is primarily for the server logs or
-                # if the user doesn't download.
-                
-                # Let's prioritize the download and print message on server side.
-                # If you want a message on the UI, you'd typically redirect to a status page.
-                
-                print(f"Web interface: {email_message}") # Print to server console for debug
                 return send_file(
                     pdf_report_path, 
                     as_attachment=True, 
@@ -169,8 +152,10 @@ def index():
             except Exception as e:
                 return render_template_string(HTML_TEMPLATE, message=f"An internal server error occurred during analysis: {str(e)}", message_type="error")
     
-    # For GET requests, render the HTML form without any messages initially
-    return render_template_string(HTML_TEMPLATE, message=None) # Pass message=None for initial load
+    return render_template_string(HTML_TEMPLATE, message=None)
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # For production deployment with Docker, it's better to use a WSGI server like Gunicorn
+    # For simple local testing with Docker, Flask's built-in server can suffice.
+    # debug=False and threaded=True for better production characteristics
+    app.run(debug=False, host="0.0.0.0", port=5000, threaded=True)

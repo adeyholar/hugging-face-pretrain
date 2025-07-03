@@ -3,27 +3,35 @@
 from transformers import AutoModelForSequenceClassification, AutoTokenizer, AutoModelForSeq2SeqLM
 import os
 
-LOCAL_MODEL_DIR = 'D:/AI/Models/huggingface'
+# Define the local directory to save models *within the Docker environment*
+LOCAL_MODEL_DIR = os.getenv("MODEL_BASE_DIR", "/app/models") # Default to /app/models
 os.makedirs(LOCAL_MODEL_DIR, exist_ok=True)
 
-distilbert_path = os.path.join(LOCAL_MODEL_DIR, 'distilbert')
-if not os.path.exists(distilbert_path):
-    print(f"Downloading DistilBERT to {distilbert_path}...")
-    model_name_distilbert = 'distilbert-base-uncased' 
-    model = AutoModelForSequenceClassification.from_pretrained(model_name_distilbert)
-    tokenizer = AutoTokenizer.from_pretrained(model_name_distilbert)
-    model.save_pretrained(distilbert_path)
-    tokenizer.save_pretrained(distilbert_path)
-    print("DistilBERT downloaded and saved.")
-else:
-    print(f"DistilBERT already exists at {distilbert_path}.")
+# Hugging Face model names to download
+# Use a model explicitly fine-tuned for sentiment analysis
+HF_SENTIMENT_MODEL_NAME = "distilbert-base-uncased-finetuned-sst2" # This is a common sentiment model
+HF_T5_NAME = "t5-small"
 
+# --- Download and Save Sentiment Model ---
+sentiment_model_path = os.path.join(LOCAL_MODEL_DIR, 'sentiment_model') # Give it a clearer name
+if not os.path.exists(sentiment_model_path):
+    print(f"Downloading Sentiment Model '{HF_SENTIMENT_MODEL_NAME}' to {sentiment_model_path}...")
+    model = AutoModelForSequenceClassification.from_pretrained(HF_SENTIMENT_MODEL_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(HF_SENTIMENT_MODEL_NAME) # Use the same name for tokenizer
+    
+    model.save_pretrained(sentiment_model_path)
+    tokenizer.save_pretrained(sentiment_model_path)
+    print("Sentiment model downloaded and saved.")
+else:
+    print(f"Sentiment model already exists at {sentiment_model_path}.")
+
+# --- Download and Save T5 for Summarization ---
 t5_path = os.path.join(LOCAL_MODEL_DIR, 't5')
 if not os.path.exists(t5_path):
-    print(f"Downloading T5 to {t5_path}...")
-    model_name_t5 = 't5-small'
-    model = AutoModelForSeq2SeqLM.from_pretrained(model_name_t5)
-    tokenizer = AutoTokenizer.from_pretrained(model_name_t5)
+    print(f"Downloading T5 '{HF_T5_NAME}' to {t5_path}...")
+    model = AutoModelForSeq2SeqLM.from_pretrained(HF_T5_NAME)
+    tokenizer = AutoTokenizer.from_pretrained(HF_T5_NAME)
+    
     model.save_pretrained(t5_path)
     tokenizer.save_pretrained(t5_path)
     print("T5 downloaded and saved.")
