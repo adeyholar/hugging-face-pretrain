@@ -1,4 +1,5 @@
 ai_huggingface-3.11/
 __pycache__/
+pycache/
 *.pyc
 .env
